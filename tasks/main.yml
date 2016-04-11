@@ -1,0 +1,40 @@
+---
+
+- name: check if interface was provided
+  fail: msg="interface is missing"
+  when: vip_interface | default("") == ""
+
+
+- name: check if VIP was provided
+  fail: msg="VIP is missing"
+  when: vip | default("") == ""
+
+
+- name: set auth_password if not provided
+  shell: openssl rand -base64 15 | tr -s '=+/' 'X'
+  register: auth_pswd_result
+  when: auth_password is not defined or auth_password | default("") == ""
+
+
+- name: set var
+  set_fact:
+     auth_password: "{{auth_pswd_result.stdout}}"
+  when: auth_password is not defined or auth_password | default("") == ""
+
+
+- name: check if secret keepalived auth password was provided
+  fail: msg="auth_password is missing"
+  when: auth_password | default("") == ""
+
+
+- include: install_prerequisites.yml
+
+
+- name: create VIP
+  sudo: yes
+  shell: ifconfig {{vip_interface}}:0 {{vip}}
+
+
+- name: templating keepalived
+  sudo: yes
+  template: src=keepalived.conf.j2 dest=/etc/keepalived/keepalived.conf
